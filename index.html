@@ -1,210 +1,566 @@
-HTML = """<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="vi">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Brocade SAN Zone Generator</title>
 <style>
+  :root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #1c2128;
+    --border: #30363d;
+    --border-focus: #388bfd;
+    --text: #e6edf3;
+    --text2: #8b949e;
+    --text3: #656d76;
+    --accent: #388bfd;
+    --accent-dim: #1f3a6e;
+    --green: #3fb950;
+    --green-dim: #1a3a25;
+    --red: #f85149;
+    --red-dim: #3b1012;
+    --orange: #d29922;
+    --mono: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --r: 8px;
+  }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-         font-size: 14px; background: #f5f5f5; color: #1a1a1a; }
-  .container { max-width: 860px; margin: 0 auto; padding: 2rem 1rem; }
-  h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
-  .subtitle { font-size: 13px; color: #666; margin-bottom: 2rem; }
-  .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px;
-          padding: 1.25rem; margin-bottom: 1rem; }
-  .card-title { font-size: 12px; font-weight: 600; color: #888;
-                text-transform: uppercase; letter-spacing: .05em; margin-bottom: 12px; }
-  .row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
-  .row input[type=text] { flex: 1; height: 36px; font-size: 13px; padding: 0 10px;
-    border: 1px solid #ddd; border-radius: 6px; background: #fafafa; color: #1a1a1a; }
-  .row input[type=text]:focus { outline: 2px solid #4a6cf7; background: #fff; }
-  .row input.wwpn { flex: 0 0 220px; font-family: monospace; }
-  .btn-remove { width: 30px; height: 30px; border: none; background: transparent;
-                cursor: pointer; font-size: 18px; color: #bbb; border-radius: 50%; }
-  .btn-remove:hover { background: #fee; color: #e44; }
-  .btn-add { height: 34px; padding: 0 14px; font-size: 12px; background: #f0f0f0;
-             border: 1px solid #ddd; border-radius: 6px; cursor: pointer; }
-  .btn-add:hover { background: #e4e4e4; }
-  .cfg-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-  .cfg-row label { font-size: 13px; color: #555; min-width: 110px; }
-  .cfg-row input { width: 180px; height: 34px; font-size: 13px; padding: 0 10px;
-    border: 1px solid #ddd; border-radius: 6px; }
-  .gen-btn { width: 100%; height: 44px; font-size: 15px; font-weight: 600;
-             background: #1a1a1a; color: #fff; border: none; border-radius: 10px;
-             cursor: pointer; margin-top: 4px; }
-  .gen-btn:hover { background: #333; }
-  .output-wrap { display: none; margin-top: 1rem; }
-  .stats { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-  .stat { background: #f0f0f0; border-radius: 6px; padding: 5px 12px;
-          font-size: 12px; color: #555; }
-  .stat b { color: #1a1a1a; }
-  textarea { width: 100%; height: 420px; font-family: 'Courier New', monospace;
-             font-size: 12px; line-height: 1.6; padding: 12px; border: 1px solid #ddd;
-             border-radius: 8px; background: #1e1e1e; color: #d4d4d4; resize: vertical; }
-  .btn-copy { height: 34px; padding: 0 16px; font-size: 13px; background: #fff;
-              border: 1px solid #ddd; border-radius: 6px; cursor: pointer; float: right; }
-  .btn-copy:hover { background: #f0f0f0; }
-  .error { background: #fee; border: 1px solid #fcc; color: #c00; border-radius: 6px;
-           padding: 8px 12px; font-size: 13px; margin-top: 8px; display: none; }
-  .col-header { display: flex; gap: 8px; margin-bottom: 4px; padding: 0 38px 0 0; }
-  .col-header span { flex: 1; font-size: 11px; color: #aaa; padding-left: 2px; }
-  .col-header span.wwpn-h { flex: 0 0 220px; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--sans);
+    font-size: 14px;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 4rem;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo-icon {
+    width: 28px; height: 28px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+  header h1 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  header .badge {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--text3);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-family: var(--mono);
+  }
+
+  /* ── Layout ── */
+  .layout {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+  .full { grid-column: 1 / -1; }
+
+  /* ── Card ── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 0;
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg3);
+  }
+  .card-header .icon { font-size: 15px; }
+  .card-header h2 { font-size: 13px; font-weight: 600; color: var(--text); }
+  .card-header .count {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--mono);
+    background: var(--bg2);
+    padding: 2px 7px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+  .card-body { padding: 12px 14px; }
+
+  /* ── Column headers ── */
+  .col-heads {
+    display: grid;
+    grid-template-columns: 1fr 1fr 28px;
+    gap: 6px;
+    padding: 0 0 6px 0;
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+
+  /* ── Port row ── */
+  .port-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 28px;
+    gap: 6px;
+    margin-bottom: 6px;
+    animation: fadeIn .15s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  .port-row input {
+    height: 32px;
+    font-size: 12px;
+    padding: 0 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    transition: border-color .15s;
+    width: 100%;
+  }
+  .port-row input::placeholder { color: var(--text3); }
+  .port-row input:focus { outline: none; border-color: var(--border-focus); background: #0d1117; }
+  .port-row input.err { border-color: var(--red); }
+  .btn-del {
+    width: 28px; height: 28px;
+    align-self: center;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text3);
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s;
+    flex-shrink: 0;
+  }
+  .btn-del:hover { border-color: var(--red); color: var(--red); background: var(--red-dim); }
+  .btn-add-row {
+    display: flex; align-items: center; gap: 5px;
+    height: 30px;
+    padding: 0 10px;
+    font-size: 12px;
+    color: var(--accent);
+    background: transparent;
+    border: 1px dashed var(--accent-dim);
+    border-radius: 6px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 4px;
+    transition: all .15s;
+  }
+  .btn-add-row:hover { background: var(--accent-dim); border-style: solid; }
+
+  /* ── Settings ── */
+  .settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .field label {
+    display: block;
+    font-size: 11px;
+    color: var(--text2);
+    margin-bottom: 5px;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .field input {
+    width: 100%;
+    height: 34px;
+    padding: 0 10px;
+    font-size: 13px;
+    font-family: var(--mono);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    transition: border-color .15s;
+  }
+  .field input:focus { outline: none; border-color: var(--border-focus); }
+
+  /* ── Generate button ── */
+  .btn-gen {
+    width: 100%;
+    height: 44px;
+    font-size: 14px;
+    font-weight: 600;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--r);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: background .15s, transform .1s;
+    letter-spacing: -0.01em;
+  }
+  .btn-gen:hover { background: #58a6ff; }
+  .btn-gen:active { transform: scale(.98); }
+
+  /* ── Error banner ── */
+  .err-banner {
+    display: none;
+    background: var(--red-dim);
+    border: 1px solid var(--red);
+    color: var(--red);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  /* ── Stats ── */
+  .stats-row {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .stat-chip {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    color: var(--text2);
+    font-family: var(--mono);
+  }
+  .stat-chip b { color: var(--green); }
+
+  /* ── Output ── */
+  .output-card { display: none; }
+  .output-toolbar {
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg3);
+  }
+  .output-toolbar .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-r { background: #ff5f56; }
+  .dot-y { background: #ffbd2e; }
+  .dot-g { background: #27c93f; }
+  .output-toolbar .filename {
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--text2);
+    margin-left: 4px;
+  }
+  .output-actions { margin-left: auto; display: flex; gap: 6px; }
+  .btn-sm {
+    height: 28px;
+    padding: 0 12px;
+    font-size: 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg2);
+    color: var(--text2);
+    cursor: pointer;
+    display: flex; align-items: center; gap: 5px;
+    transition: all .15s;
+    font-family: var(--sans);
+  }
+  .btn-sm:hover { border-color: var(--text2); color: var(--text); }
+  .btn-sm.success { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+  .output-body { padding: 14px; }
+  textarea#output {
+    width: 100%;
+    height: 460px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    resize: vertical;
+    outline: none;
+    caret-color: var(--accent);
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 680px) {
+    .layout { grid-template-columns: 1fr; }
+    .settings-grid { grid-template-columns: 1fr; }
+    .col-heads, .port-row {
+      grid-template-columns: 1fr 28px;
+    }
+    .col-heads span:first-child, .port-row input:first-child { display: none; }
+  }
 </style>
 </head>
 <body>
-<div class="container">
-  <h1>🔌 Brocade SAN Zone Generator</h1>
-  <p class="subtitle">Generate alicreate / zonecreate / cfgcreate commands for Dell Brocade SAN switches</p>
 
-  <div class="card">
-    <div class="card-title">💾 Storage ports</div>
-    <div class="col-header"><span>Alias name</span><span class="wwpn-h">pWWN</span></div>
-    <div id="storage-list"></div>
-    <button class="btn-add" onclick="addRow('storage')">+ Add storage port</button>
-  </div>
+<header>
+  <div class="logo-icon">🔌</div>
+  <h1>Brocade SAN Zone Generator</h1>
+  <span class="badge">Dell DS7720B / Brocade OEM</span>
+</header>
 
-  <div class="card">
-    <div class="card-title">🖥 Server ports</div>
-    <div class="col-header"><span>Alias name</span><span class="wwpn-h">pWWN</span></div>
-    <div id="server-list"></div>
-    <button class="btn-add" onclick="addRow('server')">+ Add server port</button>
-  </div>
+<div class="layout">
 
+  <!-- Storage Ports -->
   <div class="card">
-    <div class="card-title">⚙️ Config settings</div>
-    <div class="cfg-row">
-      <label>Config name (cfg)</label>
-      <input type="text" id="cfg-name" value="cfg-01" />
+    <div class="card-header">
+      <span class="icon">💾</span>
+      <h2>Storage ports</h2>
+      <span class="count" id="storage-count">0</span>
     </div>
-    <div class="cfg-row">
-      <label>Zones per cfgadd</label>
-      <input type="text" id="chunk-size" value="8" style="width:60px;" />
+    <div class="card-body">
+      <div class="col-heads">
+        <span>Alias name</span>
+        <span>pWWN</span>
+        <span></span>
+      </div>
+      <div id="storage-list"></div>
+      <button class="btn-add-row" onclick="addRow('storage')">
+        <span>＋</span> Add storage port
+      </button>
     </div>
   </div>
 
-  <button class="gen-btn" onclick="generate()">⚡ Generate commands</button>
-  <div class="error" id="err"></div>
-
-  <div class="output-wrap" id="output-wrap">
-    <div class="stats" id="stats"></div>
-    <button class="btn-copy" onclick="copyOut()">📋 Copy all</button>
-    <br><br>
-    <textarea id="output" readonly></textarea>
+  <!-- Server Ports -->
+  <div class="card">
+    <div class="card-header">
+      <span class="icon">🖥</span>
+      <h2>Server ports</h2>
+      <span class="count" id="server-count">0</span>
+    </div>
+    <div class="card-body">
+      <div class="col-heads">
+        <span>Alias name</span>
+        <span>pWWN</span>
+        <span></span>
+      </div>
+      <div id="server-list"></div>
+      <button class="btn-add-row" onclick="addRow('server')">
+        <span>＋</span> Add server port
+      </button>
+    </div>
   </div>
+
+  <!-- Settings -->
+  <div class="card full">
+    <div class="card-header">
+      <span class="icon">⚙️</span>
+      <h2>Config settings</h2>
+    </div>
+    <div class="card-body">
+      <div class="settings-grid">
+        <div class="field">
+          <label>Config name</label>
+          <input type="text" id="cfg-name" value="cfg-01" placeholder="cfg-01" />
+        </div>
+        <div class="field">
+          <label>Max zones per cfgadd line</label>
+          <input type="text" id="chunk-size" value="8" placeholder="8" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generate -->
+  <div class="full" style="display:flex; flex-direction:column; gap:10px;">
+    <div class="err-banner" id="err-banner"></div>
+    <button class="btn-gen" onclick="generate()">
+      <span>⚡</span> Generate commands
+    </button>
+  </div>
+
+  <!-- Output -->
+  <div class="card full output-card" id="output-card">
+    <div class="output-toolbar">
+      <div class="dot dot-r"></div>
+      <div class="dot dot-y"></div>
+      <div class="dot dot-g"></div>
+      <span class="filename">san-config.txt</span>
+      <div class="output-actions">
+        <div class="stats-row" id="stats" style="margin:0;"></div>
+        <button class="btn-sm" id="btn-copy" onclick="copyOut()">📋 Copy</button>
+        <button class="btn-sm" onclick="downloadOut()">💾 Download</button>
+      </div>
+    </div>
+    <div class="output-body">
+      <textarea id="output" readonly spellcheck="false"></textarea>
+    </div>
+  </div>
+
 </div>
 
 <script>
-let sid = 0, svid = 0;
-const storageKeys = [], serverKeys = [];
+  let sid = 0, svid = 0;
+  const storageKeys = [], serverKeys = [];
 
-function addRow(type) {
-  const id = type === 'storage' ? ++sid : ++svid;
-  const key = `${type}-${id}`;
-  (type === 'storage' ? storageKeys : serverKeys).push(key);
+  function addRow(type) {
+    const id = type === 'storage' ? ++sid : ++svid;
+    const key = `${type}-${id}`;
+    (type === 'storage' ? storageKeys : serverKeys).push(key);
 
-  const namePh = type === 'storage'
-    ? 'e.g. dell-powerstore3200-c1fc1_p1'
-    : 'e.g. dell-rs770-db-01-fc1_p1';
-  const wwpnPh = type === 'storage'
-    ? '58:cc:f0:90:4d:20:54:8c'
-    : '10:00:70:b7:e4:3c:80:ed';
+    const isStorage = type === 'storage';
+    const namePh = isStorage ? 'dell-powerstore3200-c1fc1_p1' : 'dell-rs770-db-01-fc1_p1';
+    const wwpnPh = isStorage ? '58:cc:f0:90:4d:20:54:8c' : '10:00:70:b7:e4:3c:80:ed';
 
-  const row = document.createElement('div');
-  row.className = 'row'; row.id = key;
-  row.innerHTML = `
-    <input type="text" id="${key}-name" placeholder="${namePh}" />
-    <input type="text" id="${key}-wwpn" class="wwpn" placeholder="${wwpnPh}" />
-    <button class="btn-remove" onclick="removeRow('${type}','${key}')" title="Remove">×</button>`;
-  document.getElementById(`${type}-list`).appendChild(row);
-}
-
-function removeRow(type, key) {
-  const list = type === 'storage' ? storageKeys : serverKeys;
-  const idx = list.indexOf(key);
-  if (idx > -1) list.splice(idx, 1);
-  document.getElementById(key)?.remove();
-}
-
-function getEntries(type) {
-  return (type === 'storage' ? storageKeys : serverKeys)
-    .map(k => ({
-      name: document.getElementById(`${k}-name`)?.value.trim() || '',
-      wwpn: document.getElementById(`${k}-wwpn`)?.value.trim().toLowerCase() || ''
-    })).filter(e => e.name && e.wwpn);
-}
-
-function generate() {
-  document.getElementById('err').style.display = 'none';
-  const storage = getEntries('storage');
-  const servers = getEntries('server');
-  const cfgName = document.getElementById('cfg-name').value.trim() || 'cfg-01';
-  const chunkSize = parseInt(document.getElementById('chunk-size').value) || 8;
-
-  if (!storage.length) return showErr('Please add at least one storage port.');
-  if (!servers.length) return showErr('Please add at least one server port.');
-
-  const lines = [];
-
-  lines.push('# ============================================================');
-  lines.push('# Brocade SAN Zone Config - Generated by SAN Zone Generator');
-  lines.push('# ============================================================');
-  lines.push('');
-  lines.push('# --- 1. Alias create ---');
-  [...storage, ...servers].forEach(p => lines.push(`alicreate "${p.name}", "${p.wwpn}"`));
-
-  lines.push('');
-  lines.push('# --- 2. Zone create ---');
-  const allZones = [];
-  servers.forEach(srv => {
-    storage.forEach(sto => {
-      const z = `${srv.name}_${sto.name}`;
-      lines.push(`zonecreate "${z}", "${sto.name}; ${srv.name}"`);
-      allZones.push(z);
-    });
-  });
-
-  lines.push('');
-  lines.push('# --- 3. Config create / add ---');
-  for (let i = 0; i < allZones.length; i += chunkSize) {
-    const chunk = allZones.slice(i, i + chunkSize).join('; ');
-    if (i === 0) lines.push(`cfgcreate "${cfgName}", "${chunk}"`);
-    else lines.push(`cfgadd "${cfgName}", "${chunk}"`);
+    const row = document.createElement('div');
+    row.className = 'port-row';
+    row.id = key;
+    row.innerHTML = `
+      <input type="text" id="${key}-name" placeholder="${namePh}" autocomplete="off" spellcheck="false" />
+      <input type="text" id="${key}-wwpn" placeholder="${wwpnPh}" autocomplete="off" spellcheck="false" />
+      <button class="btn-del" onclick="removeRow('${type}','${key}')" title="Remove">×</button>`;
+    document.getElementById(`${type}-list`).appendChild(row);
+    updateCount(type);
+    document.getElementById(`${key}-name`).focus();
   }
 
-  lines.push('');
-  lines.push('# --- 4. Enable & save ---');
-  lines.push(`cfgenable "${cfgName}"`);
-  lines.push('cfgsave');
+  function removeRow(type, key) {
+    const list = type === 'storage' ? storageKeys : serverKeys;
+    const idx = list.indexOf(key);
+    if (idx > -1) list.splice(idx, 1);
+    document.getElementById(key)?.remove();
+    updateCount(type);
+  }
 
-  const out = lines.join('\\n');
-  document.getElementById('output').value = out;
-  document.getElementById('output-wrap').style.display = 'block';
+  function updateCount(type) {
+    const list = type === 'storage' ? storageKeys : serverKeys;
+    document.getElementById(`${type}-count`).textContent = list.length;
+  }
 
-  const statsEl = document.getElementById('stats');
-  statsEl.innerHTML = [
-    `<div class="stat">Aliases: <b>${storage.length + servers.length}</b></div>`,
-    `<div class="stat">Zones: <b>${allZones.length}</b></div>`,
-    `<div class="stat">Storage ports: <b>${storage.length}</b></div>`,
-    `<div class="stat">Server ports: <b>${servers.length}</b></div>`,
-  ].join('');
-}
+  function getEntries(type) {
+    return (type === 'storage' ? storageKeys : serverKeys)
+      .map(k => ({
+        name: document.getElementById(`${k}-name`)?.value.trim() || '',
+        wwpn: document.getElementById(`${k}-wwpn`)?.value.trim().toLowerCase() || '',
+        key: k
+      })).filter(e => e.name && e.wwpn);
+  }
 
-function showErr(msg) {
-  const el = document.getElementById('err');
-  el.textContent = msg; el.style.display = 'block';
-}
+  function showErr(msg) {
+    const el = document.getElementById('err-banner');
+    el.textContent = '⚠ ' + msg;
+    el.style.display = 'block';
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
 
-function copyOut() {
-  const ta = document.getElementById('output');
-  ta.select();
-  document.execCommand('copy');
-  const btn = document.querySelector('.btn-copy');
-  btn.textContent = '✅ Copied!';
-  setTimeout(() => btn.textContent = '📋 Copy all', 1800);
-}
+  function generate() {
+    const errEl = document.getElementById('err-banner');
+    errEl.style.display = 'none';
+    document.querySelectorAll('.port-row input').forEach(i => i.classList.remove('err'));
 
-addRow('storage'); addRow('storage'); addRow('server');
+    const storage = getEntries('storage');
+    const servers = getEntries('server');
+    const cfgName = document.getElementById('cfg-name').value.trim() || 'cfg-01';
+    const chunkSize = Math.max(1, parseInt(document.getElementById('chunk-size').value) || 8);
+
+    if (!storage.length) { showErr('Please add at least one storage port.'); return; }
+    if (!servers.length) { showErr('Please add at least one server port.'); return; }
+
+    const lines = [];
+    const now = new Date();
+    const ts = now.toISOString().slice(0, 16).replace('T', ' ');
+
+    lines.push(`# ================================================================`);
+    lines.push(`# Brocade SAN Zone Config`);
+    lines.push(`# Generated : ${ts}`);
+    lines.push(`# Storage   : ${storage.length} port(s)`);
+    lines.push(`# Servers   : ${servers.length} port(s)`);
+    lines.push(`# Config    : ${cfgName}`);
+    lines.push(`# ================================================================`);
+    lines.push('');
+
+    // 1. alicreate
+    lines.push('# ── 1. Alias create ─────────────────────────────────────────────');
+    lines.push('# Storage');
+    storage.forEach(p => lines.push(`alicreate "${p.name}", "${p.wwpn}"`));
+    lines.push('# Server');
+    servers.forEach(p => lines.push(`alicreate "${p.name}", "${p.wwpn}"`));
+    lines.push('');
+
+    // 2. zonecreate
+    lines.push('# ── 2. Zone create ──────────────────────────────────────────────');
+    const allZones = [];
+    servers.forEach(srv => {
+      storage.forEach(sto => {
+        const z = `${srv.name}_${sto.name}`;
+        lines.push(`zonecreate "${z}", "${sto.name}; ${srv.name}"`);
+        allZones.push(z);
+      });
+    });
+    lines.push('');
+
+    // 3. cfgcreate / cfgadd
+    lines.push('# ── 3. Config create / add ──────────────────────────────────────');
+    for (let i = 0; i < allZones.length; i += chunkSize) {
+      const chunk = allZones.slice(i, i + chunkSize).join('; ');
+      if (i === 0) lines.push(`cfgcreate "${cfgName}", "${chunk}"`);
+      else         lines.push(`cfgadd "${cfgName}", "${chunk}"`);
+    }
+    lines.push('');
+
+    // 4. enable + save
+    lines.push('# ── 4. Enable & save ────────────────────────────────────────────');
+    lines.push(`cfgenable "${cfgName}"`);
+    lines.push('cfgsave');
+
+    const out = lines.join('\n');
+    document.getElementById('output').value = out;
+
+    const card = document.getElementById('output-card');
+    card.style.display = 'block';
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    const statsEl = document.getElementById('stats');
+    statsEl.innerHTML = [
+      `<span class="stat-chip">aliases <b>${storage.length + servers.length}</b></span>`,
+      `<span class="stat-chip">zones <b>${allZones.length}</b></span>`,
+      `<span class="stat-chip">lines <b>${lines.length}</b></span>`,
+    ].join('');
+  }
+
+  function copyOut() {
+    const ta = document.getElementById('output');
+    navigator.clipboard.writeText(ta.value).then(() => {
+      const btn = document.getElementById('btn-copy');
+      btn.textContent = '✅ Copied!';
+      btn.classList.add('success');
+      setTimeout(() => { btn.textContent = '📋 Copy'; btn.classList.remove('success'); }, 2000);
+    });
+  }
+
+  function downloadOut() {
+    const text = document.getElementById('output').value;
+    const cfgName = document.getElementById('cfg-name').value.trim() || 'cfg-01';
+    const blob = new Blob([text], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `san-zone-${cfgName}.txt`;
+    a.click();
+  }
+
+  // Init with sample rows
+  addRow('storage'); addRow('storage');
+  addRow('server');
 </script>
 </body>
-</html>"""
+</html>
