@@ -1,0 +1,210 @@
+HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brocade SAN Zone Generator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         font-size: 14px; background: #f5f5f5; color: #1a1a1a; }
+  .container { max-width: 860px; margin: 0 auto; padding: 2rem 1rem; }
+  h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #666; margin-bottom: 2rem; }
+  .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px;
+          padding: 1.25rem; margin-bottom: 1rem; }
+  .card-title { font-size: 12px; font-weight: 600; color: #888;
+                text-transform: uppercase; letter-spacing: .05em; margin-bottom: 12px; }
+  .row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+  .row input[type=text] { flex: 1; height: 36px; font-size: 13px; padding: 0 10px;
+    border: 1px solid #ddd; border-radius: 6px; background: #fafafa; color: #1a1a1a; }
+  .row input[type=text]:focus { outline: 2px solid #4a6cf7; background: #fff; }
+  .row input.wwpn { flex: 0 0 220px; font-family: monospace; }
+  .btn-remove { width: 30px; height: 30px; border: none; background: transparent;
+                cursor: pointer; font-size: 18px; color: #bbb; border-radius: 50%; }
+  .btn-remove:hover { background: #fee; color: #e44; }
+  .btn-add { height: 34px; padding: 0 14px; font-size: 12px; background: #f0f0f0;
+             border: 1px solid #ddd; border-radius: 6px; cursor: pointer; }
+  .btn-add:hover { background: #e4e4e4; }
+  .cfg-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .cfg-row label { font-size: 13px; color: #555; min-width: 110px; }
+  .cfg-row input { width: 180px; height: 34px; font-size: 13px; padding: 0 10px;
+    border: 1px solid #ddd; border-radius: 6px; }
+  .gen-btn { width: 100%; height: 44px; font-size: 15px; font-weight: 600;
+             background: #1a1a1a; color: #fff; border: none; border-radius: 10px;
+             cursor: pointer; margin-top: 4px; }
+  .gen-btn:hover { background: #333; }
+  .output-wrap { display: none; margin-top: 1rem; }
+  .stats { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .stat { background: #f0f0f0; border-radius: 6px; padding: 5px 12px;
+          font-size: 12px; color: #555; }
+  .stat b { color: #1a1a1a; }
+  textarea { width: 100%; height: 420px; font-family: 'Courier New', monospace;
+             font-size: 12px; line-height: 1.6; padding: 12px; border: 1px solid #ddd;
+             border-radius: 8px; background: #1e1e1e; color: #d4d4d4; resize: vertical; }
+  .btn-copy { height: 34px; padding: 0 16px; font-size: 13px; background: #fff;
+              border: 1px solid #ddd; border-radius: 6px; cursor: pointer; float: right; }
+  .btn-copy:hover { background: #f0f0f0; }
+  .error { background: #fee; border: 1px solid #fcc; color: #c00; border-radius: 6px;
+           padding: 8px 12px; font-size: 13px; margin-top: 8px; display: none; }
+  .col-header { display: flex; gap: 8px; margin-bottom: 4px; padding: 0 38px 0 0; }
+  .col-header span { flex: 1; font-size: 11px; color: #aaa; padding-left: 2px; }
+  .col-header span.wwpn-h { flex: 0 0 220px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🔌 Brocade SAN Zone Generator</h1>
+  <p class="subtitle">Generate alicreate / zonecreate / cfgcreate commands for Dell Brocade SAN switches</p>
+
+  <div class="card">
+    <div class="card-title">💾 Storage ports</div>
+    <div class="col-header"><span>Alias name</span><span class="wwpn-h">pWWN</span></div>
+    <div id="storage-list"></div>
+    <button class="btn-add" onclick="addRow('storage')">+ Add storage port</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🖥 Server ports</div>
+    <div class="col-header"><span>Alias name</span><span class="wwpn-h">pWWN</span></div>
+    <div id="server-list"></div>
+    <button class="btn-add" onclick="addRow('server')">+ Add server port</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚙️ Config settings</div>
+    <div class="cfg-row">
+      <label>Config name (cfg)</label>
+      <input type="text" id="cfg-name" value="cfg-01" />
+    </div>
+    <div class="cfg-row">
+      <label>Zones per cfgadd</label>
+      <input type="text" id="chunk-size" value="8" style="width:60px;" />
+    </div>
+  </div>
+
+  <button class="gen-btn" onclick="generate()">⚡ Generate commands</button>
+  <div class="error" id="err"></div>
+
+  <div class="output-wrap" id="output-wrap">
+    <div class="stats" id="stats"></div>
+    <button class="btn-copy" onclick="copyOut()">📋 Copy all</button>
+    <br><br>
+    <textarea id="output" readonly></textarea>
+  </div>
+</div>
+
+<script>
+let sid = 0, svid = 0;
+const storageKeys = [], serverKeys = [];
+
+function addRow(type) {
+  const id = type === 'storage' ? ++sid : ++svid;
+  const key = `${type}-${id}`;
+  (type === 'storage' ? storageKeys : serverKeys).push(key);
+
+  const namePh = type === 'storage'
+    ? 'e.g. dell-powerstore3200-c1fc1_p1'
+    : 'e.g. dell-rs770-db-01-fc1_p1';
+  const wwpnPh = type === 'storage'
+    ? '58:cc:f0:90:4d:20:54:8c'
+    : '10:00:70:b7:e4:3c:80:ed';
+
+  const row = document.createElement('div');
+  row.className = 'row'; row.id = key;
+  row.innerHTML = `
+    <input type="text" id="${key}-name" placeholder="${namePh}" />
+    <input type="text" id="${key}-wwpn" class="wwpn" placeholder="${wwpnPh}" />
+    <button class="btn-remove" onclick="removeRow('${type}','${key}')" title="Remove">×</button>`;
+  document.getElementById(`${type}-list`).appendChild(row);
+}
+
+function removeRow(type, key) {
+  const list = type === 'storage' ? storageKeys : serverKeys;
+  const idx = list.indexOf(key);
+  if (idx > -1) list.splice(idx, 1);
+  document.getElementById(key)?.remove();
+}
+
+function getEntries(type) {
+  return (type === 'storage' ? storageKeys : serverKeys)
+    .map(k => ({
+      name: document.getElementById(`${k}-name`)?.value.trim() || '',
+      wwpn: document.getElementById(`${k}-wwpn`)?.value.trim().toLowerCase() || ''
+    })).filter(e => e.name && e.wwpn);
+}
+
+function generate() {
+  document.getElementById('err').style.display = 'none';
+  const storage = getEntries('storage');
+  const servers = getEntries('server');
+  const cfgName = document.getElementById('cfg-name').value.trim() || 'cfg-01';
+  const chunkSize = parseInt(document.getElementById('chunk-size').value) || 8;
+
+  if (!storage.length) return showErr('Please add at least one storage port.');
+  if (!servers.length) return showErr('Please add at least one server port.');
+
+  const lines = [];
+
+  lines.push('# ============================================================');
+  lines.push('# Brocade SAN Zone Config - Generated by SAN Zone Generator');
+  lines.push('# ============================================================');
+  lines.push('');
+  lines.push('# --- 1. Alias create ---');
+  [...storage, ...servers].forEach(p => lines.push(`alicreate "${p.name}", "${p.wwpn}"`));
+
+  lines.push('');
+  lines.push('# --- 2. Zone create ---');
+  const allZones = [];
+  servers.forEach(srv => {
+    storage.forEach(sto => {
+      const z = `${srv.name}_${sto.name}`;
+      lines.push(`zonecreate "${z}", "${sto.name}; ${srv.name}"`);
+      allZones.push(z);
+    });
+  });
+
+  lines.push('');
+  lines.push('# --- 3. Config create / add ---');
+  for (let i = 0; i < allZones.length; i += chunkSize) {
+    const chunk = allZones.slice(i, i + chunkSize).join('; ');
+    if (i === 0) lines.push(`cfgcreate "${cfgName}", "${chunk}"`);
+    else lines.push(`cfgadd "${cfgName}", "${chunk}"`);
+  }
+
+  lines.push('');
+  lines.push('# --- 4. Enable & save ---');
+  lines.push(`cfgenable "${cfgName}"`);
+  lines.push('cfgsave');
+
+  const out = lines.join('\\n');
+  document.getElementById('output').value = out;
+  document.getElementById('output-wrap').style.display = 'block';
+
+  const statsEl = document.getElementById('stats');
+  statsEl.innerHTML = [
+    `<div class="stat">Aliases: <b>${storage.length + servers.length}</b></div>`,
+    `<div class="stat">Zones: <b>${allZones.length}</b></div>`,
+    `<div class="stat">Storage ports: <b>${storage.length}</b></div>`,
+    `<div class="stat">Server ports: <b>${servers.length}</b></div>`,
+  ].join('');
+}
+
+function showErr(msg) {
+  const el = document.getElementById('err');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+function copyOut() {
+  const ta = document.getElementById('output');
+  ta.select();
+  document.execCommand('copy');
+  const btn = document.querySelector('.btn-copy');
+  btn.textContent = '✅ Copied!';
+  setTimeout(() => btn.textContent = '📋 Copy all', 1800);
+}
+
+addRow('storage'); addRow('storage'); addRow('server');
+</script>
+</body>
+</html>"""
