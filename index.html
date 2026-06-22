@@ -180,7 +180,7 @@
   /* ── Settings ── */
   .settings-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 10px;
   }
   .field label {
@@ -300,25 +300,34 @@
     caret-color: var(--accent);
   }
 
+  /* ── Bulk box UI ── */
+  .bulk-box { margin-bottom: 14px; background: var(--bg3); padding: 12px; border-radius: 6px; border: 1px solid var(--border); }
+  .bulk-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .bulk-inputs label { display: block; font-size: 11px; color: var(--text2); margin-bottom: 4px; font-family: var(--mono); text-transform: uppercase; }
+  .bulk-inputs textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; color: var(--text); font-size: 12px; font-family: var(--mono); resize: vertical; height: 50px; outline: none; }
+  .bulk-inputs textarea:focus { border-color: var(--border-focus); }
+  .btn-import { width: 100%; background: var(--green-dim); border: 1px solid var(--green); border-radius: 6px; padding: 6px; color: var(--green); font-size: 12px; font-weight: 600; cursor: pointer; margin-top: 8px; transition: all .15s; }
+  .btn-import:hover { background: var(--green); color: #fff; }
+
   /* ── Responsive ── */
   @media (max-width: 600px) {
     .settings-grid { grid-template-columns: 1fr; }
     .col-heads, .port-row { grid-template-columns: 1fr 28px; }
     .col-heads span:first-child, .port-row input:first-child { display: none; }
+    .bulk-inputs { grid-template-columns: 1fr; }
   }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo-icon">🔌</div>
+  <div class="logo-icon">HIP</div>
   <h1>Brocade SAN Zone Generator</h1>
   <span class="badge">Dell DS7720B / Brocade OEM</span>
 </header>
 
 <div class="layout">
 
-  <!-- Storage Ports -->
   <div class="card full">
     <div class="card-header">
       <span class="icon">💾</span>
@@ -326,6 +335,20 @@
       <span class="count" id="storage-count">0</span>
     </div>
     <div class="card-body">
+      <div class="bulk-box">
+        <div class="bulk-inputs">
+          <div>
+            <label>Loạt Alias (mỗi dòng 1 cái)</label>
+            <textarea id="bulk-storage-name" placeholder="dell-powerstore-c1fc1_p1&#10;dell-powerstore-c1fc1_p2"></textarea>
+          </div>
+          <div>
+            <label>Loạt pWWN (mỗi dòng 1 cái)</label>
+            <textarea id="bulk-storage-wwpn" placeholder="58:cc:f0:90:4d:20:54:8c&#10;58:cc:f0:90:4d:20:54:8d"></textarea>
+          </div>
+        </div>
+        <button class="btn-import" onclick="processBulkImport('storage')">📥 Import Storage Data</button>
+      </div>
+
       <div class="col-heads">
         <span>Alias name</span>
         <span>pWWN</span>
@@ -338,7 +361,6 @@
     </div>
   </div>
 
-  <!-- Server Ports -->
   <div class="card full">
     <div class="card-header">
       <span class="icon">🖥</span>
@@ -346,6 +368,20 @@
       <span class="count" id="server-count">0</span>
     </div>
     <div class="card-body">
+      <div class="bulk-box">
+        <div class="bulk-inputs">
+          <div>
+            <label>Loạt Alias (mỗi dòng 1 cái)</label>
+            <textarea id="bulk-server-name" placeholder="dell-rs770-db-01-fc1_p1&#10;dell-rs770-db-02-fc1_p1"></textarea>
+          </div>
+          <div>
+            <label>Loạt pWWN (mỗi dòng 1 cái)</label>
+            <textarea id="bulk-server-wwpn" placeholder="10:00:70:b7:e4:3c:80:ed&#10;10:00:70:b7:e4:3c:80:ee"></textarea>
+          </div>
+        </div>
+        <button class="btn-import" onclick="processBulkImport('server')">📥 Import Server Data</button>
+      </div>
+
       <div class="col-heads">
         <span>Alias name</span>
         <span>pWWN</span>
@@ -358,7 +394,6 @@
     </div>
   </div>
 
-  <!-- Settings -->
   <div class="card full">
     <div class="card-header">
       <span class="icon">⚙️</span>
@@ -371,6 +406,10 @@
           <input type="text" id="cfg-name" value="cfg-01" placeholder="cfg-01" />
         </div>
         <div class="field">
+          <label>Ký tự nối zone (alias Storgae - Server)</label>
+          <input type="text" id="zone-separator" value="_" placeholder="_" />
+        </div>
+        <div class="field">
           <label>Max zones per cfgadd line</label>
           <input type="text" id="chunk-size" value="8" placeholder="8" />
         </div>
@@ -378,7 +417,6 @@
     </div>
   </div>
 
-  <!-- Generate -->
   <div class="full" style="display:flex; flex-direction:column; gap:10px;">
     <div class="err-banner" id="err-banner"></div>
     <button class="btn-gen" onclick="generate()">
@@ -386,7 +424,6 @@
     </button>
   </div>
 
-  <!-- Output -->
   <div class="card full output-card" id="output-card">
     <div class="output-toolbar">
       <div class="dot dot-r"></div>
@@ -410,7 +447,7 @@
   let sid = 0, svid = 0;
   const storageKeys = [], serverKeys = [];
 
-  function addRow(type) {
+  function addRow(type, initialName = '', initialWwpn = '') {
     const id = type === 'storage' ? ++sid : ++svid;
     const key = `${type}-${id}`;
     (type === 'storage' ? storageKeys : serverKeys).push(key);
@@ -423,12 +460,37 @@
     row.className = 'port-row';
     row.id = key;
     row.innerHTML = `
-      <input type="text" id="${key}-name" placeholder="${namePh}" autocomplete="off" spellcheck="false" />
-      <input type="text" id="${key}-wwpn" placeholder="${wwpnPh}" autocomplete="off" spellcheck="false" />
+      <input type="text" id="${key}-name" placeholder="${namePh}" value="${initialName}" autocomplete="off" spellcheck="false" />
+      <input type="text" id="${key}-wwpn" placeholder="${wwpnPh}" value="${initialWwpn}" autocomplete="off" spellcheck="false" />
       <button class="btn-del" onclick="removeRow('${type}','${key}')" title="Remove">×</button>`;
     document.getElementById(`${type}-list`).appendChild(row);
     updateCount(type);
-    document.getElementById(`${key}-name`).focus();
+    
+    if (!initialName && !initialWwpn) {
+      document.getElementById(`${key}-name`).focus();
+    }
+  }
+
+  /* Hàm xử lý Bulk Import gộp dòng từ 2 cột Textarea độc lập */
+  function processBulkImport(type) {
+    const txtName = document.getElementById(`bulk-${type}-name`);
+    const txtWwpn = document.getElementById(`bulk-${type}-wwpn`);
+
+    const names = txtName.value.split('\n').map(s => s.trim()).filter(s => s);
+    const wwpns = txtWwpn.value.split('\n').map(s => s.trim()).filter(s => s);
+
+    if (names.length === 0 && wwpns.length === 0) {
+      alert("Vui lòng điền dữ liệu trước khi Import!");
+      return;
+    }
+
+    const maxLen = Math.max(names.length, wwpns.length);
+    for (let i = 0; i < maxLen; i++) {
+      addRow(type, names[i] || '', wwpns[i] || '');
+    }
+
+    txtName.value = '';
+    txtWwpn.value = '';
   }
 
   function removeRow(type, key) {
@@ -444,11 +506,12 @@
     document.getElementById(`${type}-count`).textContent = list.length;
   }
 
+  /* Đã loại bỏ .toLowerCase() để giữ nguyên ký tự viết hoa của pWWN */
   function getEntries(type) {
     return (type === 'storage' ? storageKeys : serverKeys)
       .map(k => ({
         name: document.getElementById(`${k}-name`)?.value.trim() || '',
-        wwpn: document.getElementById(`${k}-wwpn`)?.value.trim().toLowerCase() || '',
+        wwpn: document.getElementById(`${k}-wwpn`)?.value.trim() || '',
         key: k
       })).filter(e => e.name && e.wwpn);
   }
@@ -468,6 +531,7 @@
     const storage = getEntries('storage');
     const servers = getEntries('server');
     const cfgName = document.getElementById('cfg-name').value.trim() || 'cfg-01';
+    const separator = document.getElementById('zone-separator').value || '_';
     const chunkSize = Math.max(1, parseInt(document.getElementById('chunk-size').value) || 8);
 
     if (!storage.length) { showErr('Please add at least one storage port.'); return; }
@@ -499,10 +563,11 @@
     const allZones = [];
     servers.forEach(srv => {
       storage.forEach(sto => {
-        const z = `${srv.name}_${sto.name}`;
+        const z = `${srv.name}${separator}${sto.name}`;
         lines.push(`zonecreate "${z}", "${sto.name}; ${srv.name}"`);
         allZones.push(z);
       });
+      lines.push('');
     });
     lines.push('');
 
@@ -512,6 +577,7 @@
       const chunk = allZones.slice(i, i + chunkSize).join('; ');
       if (i === 0) lines.push(`cfgcreate "${cfgName}", "${chunk}"`);
       else         lines.push(`cfgadd "${cfgName}", "${chunk}"`);
+      lines.push('');
     }
     lines.push('');
 
